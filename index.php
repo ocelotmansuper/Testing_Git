@@ -59,7 +59,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Сначала проверяем, существует ли пользователь
+    // Проверяем, существует ли пользователь
     $checkStmt = $connection->prepare("SELECT vk_id FROM leaderboard WHERE vk_id = ?");
     $checkStmt->bind_param("s", $data['vk_id']);
     $checkStmt->execute();
@@ -69,17 +69,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$exists) {
         // Создаем нового пользователя
-        $stmt = $connection->prepare("
-            INSERT INTO leaderboard (vk_id, name, photo_url, score, upgrades, last_online) 
+        $stmt = $connection->prepare("\n            INSERT INTO leaderboard (vk_id, name, photo_url, score, upgrades, last_online) 
             VALUES (?, ?, ?, ?, ?, ?)
         ");
-        
+
         $score = isset($data['score']) ? intval($data['score']) : 0;
         $upgrades = isset($data['upgrades']) && isValidJson($data['upgrades']) ? $data['upgrades'] : '[]';
         $lastOnline = isset($data['last_online']) ? intval($data['last_online']) : time();
         $name = isset($data['name']) ? $data['name'] : '';
         $photoUrl = isset($data['photo_url']) ? $data['photo_url'] : '';
-        
+
         $stmt->bind_param("sssisi", 
             $data['vk_id'],
             $name,
@@ -101,14 +100,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         if (isset($data['upgrades'])) {
-            if (isValidJson($data['upgrades'])) {
+            $rawUpgrades = $data['upgrades'];
+            $isValid = isValidJson($rawUpgrades);
+
+            if ($isValid && $rawUpgrades !== '') {
                 $updateFields[] = "upgrades = ?";
-                $params[] = $data['upgrades'];
+                $params[] = $rawUpgrades;
                 $types .= 's';
             } else {
-                $updateFields[] = "upgrades = ?";
-                $params[] = '[]';
-                $types .= 's';
+                // Не сбрасывать upgrades, если данные некорректны или пусты
+                error_log("Invalid or empty upgrades received for vk_id: {$data['vk_id']}");
             }
         }
 
@@ -145,19 +146,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new Exception($stmt->error);
         }
     } catch (Exception $e) {
-        echo json_encode([
-            'success' => false,
-            'error' => $e->getMessage()
-        ]);
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
     }
 
     $stmt->close();
-} 
-else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+} else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
     if (isset($_GET['vk_id'])) {
         // Получение данных конкретного игрока
-        $stmt = $connection->prepare("
-            SELECT 
+        $stmt = $connection->prepare("\n            SELECT 
                 vk_id, 
                 name, 
                 photo_url, 
@@ -168,7 +164,7 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             WHERE vk_id = ? 
             LIMIT 1
         ");
-        
+
         $stmt->bind_param("s", $_GET['vk_id']);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -178,22 +174,21 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
             'success' => true,
             'data' => $player ? [$player] : []
         ]);
-        
+
         $stmt->close();
     } else {
         // Получение топ 10 игроков
-        $result = $connection->query("
-            SELECT vk_id, name, photo_url, score 
+        $result = $connection->query("\n            SELECT vk_id, name, photo_url, score 
             FROM leaderboard 
             ORDER BY score DESC 
             LIMIT 10
         ");
-        
+
         $leaders = [];
         while ($row = $result->fetch_assoc()) {
             $leaders[] = $row;
         }
-        
+
         echo json_encode([
             'success' => true,
             'data' => $leaders
