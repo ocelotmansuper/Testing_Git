@@ -14,7 +14,7 @@ public class AutoClickManager : MonoBehaviour
 
     private void Awake()
     {
-        
+
     }
 
     public void Initialize(GameManager manager)

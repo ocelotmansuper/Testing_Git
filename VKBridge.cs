@@ -13,6 +13,13 @@ public class VKBridge : MonoBehaviour
 
     public static void Send(string method, string parameters = "{}")
     {
+        // Проверяем, что параметры не пустые
+        if (string.IsNullOrWhiteSpace(parameters))
+        {
+            Debug.LogWarning("Empty parameters detected. Replacing with default JSON.");
+            parameters = "{}"; // Устанавливаем пустой объект JSON
+        }
+
 #if UNITY_WEBGL && !UNITY_EDITOR
         var message = new VKBridgeMessage { method = method, parameters = parameters };
         var jsonMessage = JsonUtility.ToJson(message);
