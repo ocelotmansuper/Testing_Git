@@ -96,15 +96,17 @@
 
         createUnityInstance(canvas, config).then((unityInstance) => {
             window.unityInstance = unityInstance;
+
+            // Handle visibility changes for the browser tab
+            document.addEventListener("visibilitychange", function() {
+                if (document.visibilityState === "hidden") {
+                    unityInstance.SendMessage('GameManager', 'OnApplicationPause', 'true');
+                } else if (document.visibilityState === "visible") {
+                    unityInstance.SendMessage('GameManager', 'OnApplicationPause', 'false');
+                }
+            });
         });
 
-        // Notify Unity about device type
-        function notifyUnityAboutDevice() {
-            if (window.unityInstance) {
-                var isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-                window.unityInstance.SendMessage('GameManager', 'OnDeviceTypeChanged', isMobile ? 'mobile' : 'desktop');
-            }
-        }
     </script>
 </body>
 </html>

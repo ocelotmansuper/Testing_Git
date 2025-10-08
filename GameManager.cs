@@ -22,6 +22,8 @@ public class GameManager : MonoBehaviour
     private AutoClickManager autoClickManager;
     private long lastOnlineTime;
 
+    private long lastPauseTime = 0; // Время ухода в фон
+
     private void Start()
     {
         if (currentUI == null)
@@ -158,6 +160,8 @@ public class GameManager : MonoBehaviour
         long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long timeDifference = currentTime - lastOnlineTime;
 
+        const long MIN_OFFLINE_SECONDS = 60; // 1 минута
+        if (timeDifference < MIN_OFFLINE_SECONDS) return;
         // Ограничиваем максимальное время оффлайн прогресса (например, 24 часа)
         const long MAX_OFFLINE_SECONDS = 24 * 60 * 60;
         timeDifference = (long)Mathf.Min(timeDifference, MAX_OFFLINE_SECONDS); // Добавляем явное приведение типов
@@ -179,6 +183,7 @@ public class GameManager : MonoBehaviour
             AddScoreWithoutSave(earnedPoints);
             SaveScore(); // Сохраняем новый счет
         }
+        else return;
     }
 
     private void ShowOfflineEarningsPopup(int earnedPoints, TimeSpan offlineTime)
@@ -206,6 +211,7 @@ public class GameManager : MonoBehaviour
 
     public void IncreaseScore()
     {
+        Debug.Log("Clicked");
         currentScore++;
         currentUI?.UpdateScore(currentScore);
         SaveScore();
@@ -419,12 +425,41 @@ public class GameManager : MonoBehaviour
         }
     }
 
-    private void OnApplicationPause(bool pauseStatus)
+    private void OnApplicationPause(string pauseStatus)
     {
-        if (pauseStatus)
+        // Преобразуем строковый параметр в логическое значение
+        bool isPaused = pauseStatus == "true";
+
+        if (isPaused)
         {
-            SaveProgress();
+            Debug.Log("[GameManager] Вкладка сворачивается. Сохраняем прогресс.");
+            SaveProgress(); // Сохранение прогресса
+            lastPauseTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // Сохраняем время паузы
         }
+        else
+        {
+            Debug.Log("[GameManager] Вкладка активирована. Рассчитываем пассивный доход.");
+            HandleReturnFromPause(); // Рассчитываем доход за время отсутствия
+        }
+    }
+
+    private void HandleReturnFromPause()
+    {
+        if (lastPauseTime == 0) return; // Если время не установлено, ничего не делаем
+
+        long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        long timeDiff = currentTime - lastPauseTime;
+
+        float pointsPerSecond = autoClickManager?.GetTotalPointsPerSecond() ?? 0;
+        int earnedPoints = Mathf.FloorToInt(pointsPerSecond * timeDiff);
+
+        if (earnedPoints > 0)
+        {
+            AddScore(earnedPoints); // Начисляем заработанные очки
+            Debug.Log($"[GameManager] Начислено {earnedPoints} за {timeDiff} секунд отсутствия.");
+        }
+
+        lastPauseTime = 0; // Сбрасываем время ухода в фон
     }
 
     private void OnApplicationQuit()

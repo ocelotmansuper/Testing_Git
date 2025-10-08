@@ -42,7 +42,10 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
                  $"upgradesContent: {(upgradesContent != null)}");
 
         if (increaseButton != null)
+        {
+            increaseButton.onClick.RemoveAllListeners();
             increaseButton.onClick.AddListener(gameManager.IncreaseScore);
+        }
 
         if (showLeaderboardButton != null)
             showLeaderboardButton.onClick.AddListener(() => ShowLeaderboard(true));
@@ -125,7 +128,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
             // Предполагая, что у вас есть TextMeshProUGUI компоненты для отображения текста
             if (offlineEarningsText != null)
             {
-                offlineEarningsText.text = $"Пока вас не было\n({timeText})\nвы заработали {earnedPoints} очков";
+                offlineEarningsText.text = $"Пока вас не было вы заработали {earnedPoints} очков";
             }
         }
         else
