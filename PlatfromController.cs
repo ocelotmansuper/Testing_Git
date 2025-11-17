@@ -57,6 +57,7 @@ public class PlatfromController : MonoBehaviour
 
         // Получаем компонент UI
         currentUI = uiInstance.GetComponent<IGameUI>();
+        currentUI?.SetupUI(gameManager);
         if (currentUI == null)
         {
             Debug.LogError("UI prefab doesn't implement IGameUI interface!");

@@ -4,53 +4,91 @@ header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST');
 header('Access-Control-Allow-Headers: Content-Type');
 
-// Подключение к БД
+// Подключение к базе данных
 $connection = new mysqli("localhost", "u3163899_leader_user", "Renatik179!", "u3163899_leaderboard");
 $connection->set_charset("utf8mb4");
 
-// Функция для скачивания и сохранения аватара
-function downloadAndSaveAvatar($url, $vkId) {
-    $avatarsDir = __DIR__ . '/avatars/';
-    if (!file_exists($avatarsDir)) {
-        mkdir($avatarsDir, 0755, true);
-    }
-
-    $fileName = $avatarsDir . $vkId . '.jpg';
-    $savedUrl = 'https://misterimrt.online/api/avatars/' . $vkId . '.jpg';
-
-    if (file_exists($fileName) && (time() - filemtime($fileName) < 86400)) {
-        return $savedUrl;
-    }
-
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0');
-    $data = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
-
-    if ($httpCode === 200) {
-        file_put_contents($fileName, $data);
-        return $savedUrl;
-    }
-
-    return 'https://misterimrt.online/api/avatars/default.jpg';
-}
-
-// Функция проверки JSON
 function isValidJson($str) {
     if (empty($str)) return false;
     if (!is_string($str)) return false;
     try {
         json_decode($str);
         return json_last_error() === JSON_ERROR_NONE;
-    } catch(Exception $e) {
+    } catch (Exception $e) {
         return false;
     }
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+// Сохранение или обновление данных костюмов
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['action'] === 'player_costumes') {
+    $rawData = file_get_contents('php://input');
+    $data = json_decode($rawData, true);
+
+    // Логируем POST-запрос для отладки
+    error_log("[POST Request] Raw Data: " . $rawData);
+    error_log("[POST Request] Parsed Data: " . json_encode($data, JSON_PRETTY_PRINT));
+
+    if (!$data || !isset($data['vk_id'])) {
+        echo json_encode(['success' => false, 'error' => 'Invalid or missing VK ID']);
+        exit;
+    }
+
+    $vk_id = $data['vk_id'];
+
+    // Проверяем существование пользователя и сохраняем его текущие данные
+    $stmt = $connection->prepare("SELECT purchased_costumes, last_equipped_costume FROM leaderboard WHERE vk_id = ?");
+    $stmt->bind_param("s", $vk_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $existingData = $result->fetch_assoc();
+    $stmt->close();
+
+    // Используем существующие данные, если новые не переданы
+    $purchasedCostumes = isset($data['purchasedCostumes']) ? json_encode($data['purchasedCostumes'], JSON_UNESCAPED_UNICODE) : $existingData['purchased_costumes'];
+    $lastEquipped = isset($data['lastEquipped']) ? $data['lastEquipped'] : $existingData['last_equipped_costume'];
+
+    // Логируем данные перед записью в базу
+    error_log("[Updated Data for vk_id=$vk_id]: purchasedCostumes = $purchasedCostumes, lastEquipped = $lastEquipped");
+
+    $stmt = $connection->prepare("UPDATE leaderboard SET purchased_costumes = ?, last_equipped_costume = ? WHERE vk_id = ?");
+    $stmt->bind_param("sss", $purchasedCostumes, $lastEquipped, $vk_id);
+    $stmt->execute();
+    $stmt->close();
+
+    echo json_encode(['success' => true]);
+}
+
+// Загрузка данных костюмов
+else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'player_costumes' && isset($_GET['vk_id'])) {
+    $vk_id = $_GET['vk_id'];
+
+    error_log("[GET Request for costumes - vk_id = {$vk_id}]");
+
+    // Получаем данные костюмов
+    $stmt = $connection->prepare("SELECT purchased_costumes, last_equipped_costume FROM leaderboard WHERE vk_id = ?");
+    $stmt->bind_param("s", $vk_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $costumeData = $result->fetch_assoc();
+    $stmt->close();
+
+    if ($costumeData) {
+        error_log("[Costume Data retrieved successfully for vk_id={$vk_id}]: " . print_r($costumeData, true));
+        echo json_encode([
+            'success' => true,
+            'data' => [
+                'purchasedCostumes' => json_decode($costumeData['purchased_costumes']),
+                'lastEquipped' => $costumeData['last_equipped_costume']
+            ]
+        ]);
+    } else {
+        error_log("[No Costume Data found for vk_id={$vk_id}]");
+        echo json_encode(['success' => false, 'error' => 'Player not found']);
+    }
+}
+
+// Сохранение или обновление остальных данных игрока
+else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $rawData = file_get_contents('php://input');
     $data = json_decode($rawData, true);
     
@@ -59,7 +97,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
     }
 
-    // Проверяем, существует ли пользователь
     $checkStmt = $connection->prepare("SELECT vk_id FROM leaderboard WHERE vk_id = ?");
     $checkStmt->bind_param("s", $data['vk_id']);
     $checkStmt->execute();
@@ -69,10 +106,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (!$exists) {
         // Создаем нового пользователя
-        $stmt = $connection->prepare("\n            INSERT INTO leaderboard (vk_id, name, photo_url, score, upgrades, last_online) 
-            VALUES (?, ?, ?, ?, ?, ?)
-        ");
-
+        $stmt = $connection->prepare("INSERT INTO leaderboard (vk_id, name, photo_url, score, upgrades, last_online) 
+            VALUES (?, ?, ?, ?, ?, ?)");
+        
         $score = isset($data['score']) ? intval($data['score']) : 0;
         $upgrades = isset($data['upgrades']) && isValidJson($data['upgrades']) ? $data['upgrades'] : '[]';
         $lastOnline = isset($data['last_online']) ? intval($data['last_online']) : time();
@@ -108,7 +144,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $params[] = $rawUpgrades;
                 $types .= 's';
             } else {
-                // Не сбрасывать upgrades, если данные некорректны или пусты
                 error_log("Invalid or empty upgrades received for vk_id: {$data['vk_id']}");
             }
         }
@@ -150,21 +185,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $stmt->close();
-} else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    if (isset($_GET['vk_id'])) {
-        // Получение данных конкретного игрока
-        $stmt = $connection->prepare("\n            SELECT 
-                vk_id, 
-                name, 
-                photo_url, 
-                score, 
-                COALESCE(upgrades, '[]') as upgrades,
-                COALESCE(last_online, 0) as last_online 
-            FROM leaderboard 
-            WHERE vk_id = ? 
-            LIMIT 1
-        ");
+}
 
+// Загрузка данных игрока и топ лидеров
+else if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+    if (isset($_GET['vk_id'])) {
+        $stmt = $connection->prepare("SELECT vk_id, name, photo_url, score, COALESCE(upgrades, '[]') as upgrades, COALESCE(last_online, 0) as last_online FROM leaderboard WHERE vk_id = ?");
         $stmt->bind_param("s", $_GET['vk_id']);
         $stmt->execute();
         $result = $stmt->get_result();
@@ -177,13 +203,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $stmt->close();
     } else {
-        // Получение топ 10 игроков
-        $result = $connection->query("\n            SELECT vk_id, name, photo_url, score 
-            FROM leaderboard 
-            ORDER BY score DESC 
-            LIMIT 10
-        ");
-
+        $result = $connection->query("SELECT vk_id, name, photo_url, score FROM leaderboard ORDER BY score DESC LIMIT 10");
         $leaders = [];
         while ($row = $result->fetch_assoc()) {
             $leaders[] = $row;

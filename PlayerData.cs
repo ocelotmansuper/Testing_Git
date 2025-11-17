@@ -8,6 +8,7 @@ public class PlayerData
     public string photo_url;
     public int score;
     public string upgrades;
+    public string costumes;
     public long last_online;
 }
 

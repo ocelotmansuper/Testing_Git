@@ -22,7 +22,13 @@ public class GameManager : MonoBehaviour
     private AutoClickManager autoClickManager;
     private long lastOnlineTime;
 
-    private long lastPauseTime = 0; // Время ухода в фон
+    private long lastPauseTime = 0; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ
+
+    public CharacterAnimator characterAnimator;
+
+    public CostumeManager costumeManager;
+
+    public int BonusPerClick; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ
 
     private void Start()
     {
@@ -41,6 +47,7 @@ public class GameManager : MonoBehaviour
         autoClickManager.Initialize(this);
 
         InitVK();
+        StartCoroutine(LoadCostumeData());
     }
 
     public void SetUI(IGameUI ui)
@@ -129,10 +136,10 @@ public class GameManager : MonoBehaviour
                         Debug.Log($"Loading upgrades: {playerData.upgrades}");
                         autoClickManager.LoadUpgradesFromJson(playerData.upgrades);
 
-                        // Рассчитываем оффлайн прогресс
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                         CalculateOfflineProgress();
 
-                        // Обновляем UI всех улучшений
+                        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ UI пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                         var baseGameUI = currentUI as BaseGameUI;
                         if (baseGameUI != null)
                         {
@@ -160,28 +167,28 @@ public class GameManager : MonoBehaviour
         long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long timeDifference = currentTime - lastOnlineTime;
 
-        const long MIN_OFFLINE_SECONDS = 60; // 1 минута
+        const long MIN_OFFLINE_SECONDS = 60; // 1 пїЅпїЅпїЅпїЅпїЅпїЅ
         if (timeDifference < MIN_OFFLINE_SECONDS) return;
-        // Ограничиваем максимальное время оффлайн прогресса (например, 24 часа)
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ (пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, 24 пїЅпїЅпїЅпїЅ)
         const long MAX_OFFLINE_SECONDS = 24 * 60 * 60;
-        timeDifference = (long)Mathf.Min(timeDifference, MAX_OFFLINE_SECONDS); // Добавляем явное приведение типов
+        timeDifference = (long)Mathf.Min(timeDifference, MAX_OFFLINE_SECONDS); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
         if (timeDifference <= 0) return;
 
-        // Рассчитываем общее количество очков в секунду от всех улучшений
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         float pointsPerSecond = autoClickManager.GetTotalPointsPerSecond();
 
-        // Рассчитываем заработанные очки
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         int earnedPoints = Mathf.FloorToInt(pointsPerSecond * timeDifference);
 
         if (earnedPoints > 0)
         {
-            // Показываем сообщение о заработанных очках
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
             ShowOfflineEarningsPopup(earnedPoints, TimeSpan.FromSeconds(timeDifference));
 
-            // Добавляем очки
+            // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
             AddScoreWithoutSave(earnedPoints);
-            SaveScore(); // Сохраняем новый счет
+            SaveScore(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
         }
         else return;
     }
@@ -191,15 +198,15 @@ public class GameManager : MonoBehaviour
         string timeText;
         if (offlineTime.TotalHours >= 1)
         {
-            timeText = $"{(int)offlineTime.TotalHours} часов {offlineTime.Minutes} минут";
+            timeText = $"{(int)offlineTime.TotalHours} пїЅпїЅпїЅпїЅпїЅ {offlineTime.Minutes} пїЅпїЅпїЅпїЅпїЅ";
         }
         else if (offlineTime.Minutes > 0)
         {
-            timeText = $"{offlineTime.Minutes} минут";
+            timeText = $"{offlineTime.Minutes} пїЅпїЅпїЅпїЅпїЅ";
         }
         else
         {
-            timeText = "менее минуты";
+            timeText = "пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ";
         }
 
         var baseGameUI = currentUI as BaseGameUI;
@@ -211,8 +218,12 @@ public class GameManager : MonoBehaviour
 
     public void IncreaseScore()
     {
-        Debug.Log("Clicked");
-        currentScore++;
+        int bonus = costumeManager != null ? costumeManager.GetBonusPerClick() : 0;
+        int scoreToAdd = 1 + bonus; // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅ + пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+
+        currentScore += scoreToAdd;
+
+        characterAnimator.OnClick();
         currentUI?.UpdateScore(currentScore);
         SaveScore();
     }
@@ -254,8 +265,8 @@ public class GameManager : MonoBehaviour
     {
         Debug.Log($"Saving user data");
 
-        // Создаем начальный JSON для улучшений
-        string initialUpgrades = autoClickManager.GetInitialUpgradesJson(); // Новый метод
+        // пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ JSON пїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+        string initialUpgrades = autoClickManager.GetInitialUpgradesJson(); // пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
 
         PlayerData playerData = new PlayerData
         {
@@ -263,7 +274,7 @@ public class GameManager : MonoBehaviour
             name = playerName,
             photo_url = photoUrl,
             score = currentScore,
-            upgrades = initialUpgrades, // Используем начальный JSON
+            upgrades = initialUpgrades, // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ JSON
             last_online = DateTimeOffset.UtcNow.ToUnixTimeSeconds()
         };
 
@@ -331,7 +342,7 @@ public class GameManager : MonoBehaviour
 
     public void AddScore(int amount)
     {
-        currentScore += amount;
+        currentScore += amount + BonusPerClick; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
         currentUI?.UpdateScore(currentScore);
         SaveScore();
     }
@@ -369,11 +380,11 @@ public class GameManager : MonoBehaviour
             Debug.Log("[GameManager] Starting SaveProgress");
             long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
 
-            string upgradesJson = "[]"; // значение по умолчанию
+            string upgradesJson = "[]"; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
             if (autoClickManager != null)
             {
                 upgradesJson = autoClickManager.GetUpgradesJson();
-                // Проверяем, что не отправляем пустой массив, если есть улучшения
+                // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
                 if (upgradesJson == "[]" && autoClickManager.HasAnyUpgrades())
                 {
                     Debug.LogWarning("[GameManager] Preventing save of empty upgrades when upgrades exist");
@@ -425,27 +436,162 @@ public class GameManager : MonoBehaviour
         }
     }
 
+    public IEnumerator SendGetRequest(string endpoint, Action<string> callback)
+    {
+        if (string.IsNullOrEmpty(vkId))
+        {
+            Debug.LogError("VK ID is null or empty, cannot send GET request.");
+            yield break;
+        }
+
+        string url = $"{API_URL}{endpoint}?vk_id={vkId}";
+        Debug.Log($"Sending GET request to: {url}");
+
+        using (UnityWebRequest www = UnityWebRequest.Get(url))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log($"GET request successful. Response: {www.downloadHandler.text}");
+                callback?.Invoke(www.downloadHandler.text);
+            }
+            else
+            {
+                Debug.LogError($"GET request failed: {www.error}");
+                callback?.Invoke(null); // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ null
+            }
+        }
+    }
+
+    public IEnumerator SendPostRequest(string endpoint, string jsonData)
+    {
+        if (string.IsNullOrEmpty(vkId))
+        {
+            Debug.LogError("VK ID is null or empty, cannot send POST request.");
+            yield break;
+        }
+
+        string url = $"{API_URL}?action={endpoint}"; // Р”РѕР±Р°РІР»СЏРµРј РїР°СЂР°РјРµС‚СЂ action
+        Debug.Log($"Sending POST request to: {url} with data: {jsonData}");
+
+        using (UnityWebRequest www = UnityWebRequest.PostWwwForm(url, "POST"))
+        {
+            www.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(jsonData));
+            www.downloadHandler = new DownloadHandlerBuffer();
+            www.SetRequestHeader("Content-Type", "application/json");
+
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log($"POST request successful. Server response: {www.downloadHandler.text}");
+            }
+            else
+            {
+                Debug.LogError($"POST request failed: {www.error}\nURL: {url}");
+            }
+        }
+    }
+
+    public IEnumerator SaveCostumeData(List<string> purchasedCostumes, string lastEquippedCostume)
+    {
+        var saveData = new CostumeSaveData
+        {
+            vk_id = vkId,
+            purchasedCostumes = purchasedCostumes.ToArray(),
+            lastEquipped = lastEquippedCostume
+        };
+
+        string jsonData = JsonUtility.ToJson(saveData);
+        string url = $"{API_URL}?action=player_costumes";
+
+        Debug.Log($"[Save] Sending POST request to {url}");
+        Debug.Log($"[Save] JSON Data: {jsonData}");
+
+        using (UnityWebRequest www = UnityWebRequest.PostWwwForm(url, "POST"))
+        {
+            www.uploadHandler = new UploadHandlerRaw(System.Text.Encoding.UTF8.GetBytes(jsonData));
+            www.SetRequestHeader("Content-Type", "application/json");
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log($"[Save] Server response: {www.downloadHandler.text}");
+            }
+            else
+            {
+                Debug.LogError($"[Save] Failed to save data. Error: {www.error}");
+            }
+        }
+    }
+
+    private IEnumerator LoadCostumeData()
+    {
+        string url = $"{API_URL}?action=player_costumes&vk_id={vkId}";
+
+        Debug.Log($"[Load] Sending GET request to {url}");
+
+        using (UnityWebRequest www = UnityWebRequest.Get(url))
+        {
+            yield return www.SendWebRequest();
+
+            if (www.result == UnityWebRequest.Result.Success)
+            {
+                Debug.Log($"[Load] Response data: {www.downloadHandler.text}");
+
+                var response = JsonUtility.FromJson<CostumeResponse>(www.downloadHandler.text);
+                if (response.success)
+                {
+                    costumeManager.ReapplyCostumeData(response.data.purchased_costumes, response.data.last_equipped_costume);
+                    Debug.Log("[Load] Costume data successfully applied.");
+                }
+                else
+                {
+                    Debug.LogWarning("[Load] No costume data found on server.");
+                }
+            }
+            else
+            {
+                Debug.LogError($"[Load] Failed to load costume data. Error: {www.error}");
+            }
+        }
+    }
+
+    [Serializable]
+    public class CostumeResponse
+    {
+        public bool success;
+        public CostumeServerData data;
+    }
+
+    [Serializable]
+    public class CostumeServerData
+    {
+        public string purchased_costumes;
+        public string last_equipped_costume;
+    }
+
     private void OnApplicationPause(string pauseStatus)
     {
-        // Преобразуем строковый параметр в логическое значение
         bool isPaused = pauseStatus == "true";
 
         if (isPaused)
         {
-            Debug.Log("[GameManager] Вкладка сворачивается. Сохраняем прогресс.");
-            SaveProgress(); // Сохранение прогресса
-            lastPauseTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // Сохраняем время паузы
+            Debug.Log("[GameManager] пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.");
+            SaveProgress(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
+            lastPauseTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ
         }
         else
         {
-            Debug.Log("[GameManager] Вкладка активирована. Рассчитываем пассивный доход.");
-            HandleReturnFromPause(); // Рассчитываем доход за время отсутствия
+            Debug.Log("[GameManager] пїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ. пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ.");
+            HandleReturnFromPause(); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ
         }
     }
 
     private void HandleReturnFromPause()
     {
-        if (lastPauseTime == 0) return; // Если время не установлено, ничего не делаем
+        if (lastPauseTime == 0) return; // пїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ, пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅ
 
         long currentTime = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
         long timeDiff = currentTime - lastPauseTime;
@@ -455,11 +601,11 @@ public class GameManager : MonoBehaviour
 
         if (earnedPoints > 0)
         {
-            AddScore(earnedPoints); // Начисляем заработанные очки
-            Debug.Log($"[GameManager] Начислено {earnedPoints} за {timeDiff} секунд отсутствия.");
+            AddScore(earnedPoints); // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅ
+            Debug.Log($"[GameManager] пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ {earnedPoints} пїЅпїЅ {timeDiff} пїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ.");
         }
 
-        lastPauseTime = 0; // Сбрасываем время ухода в фон
+        lastPauseTime = 0; // пїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅпїЅпїЅпїЅпїЅ пїЅ пїЅпїЅпїЅ
     }
 
     private void OnApplicationQuit()

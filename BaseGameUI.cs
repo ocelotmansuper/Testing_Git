@@ -18,14 +18,28 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
     [SerializeField] protected GameObject upgradeItemPrefab;
     [SerializeField] protected TMP_Text totalPointsPerSecondText;
     [SerializeField] protected Button showUpgradesButton;
+    [SerializeField] protected CharacterAnimator characterAnimator;
+
+    [Header("Costume System UI")]
+    [SerializeField] protected GameObject costumesPanel;
+    [SerializeField] protected Transform costumesContent;
+    [SerializeField] protected GameObject costumeItemPrefab;
+    [SerializeField] protected Button showCostumesButton;
 
     protected GameManager gameManager;
+    public CostumeManager costumeManager;
     protected AutoClickManager autoClickManager;
     protected UpgradeItem[] upgradeItems;
 
     [Header("Offline Earnings")]
     [SerializeField] private GameObject offlineEarningsPopup;
     [SerializeField] private TextMeshProUGUI offlineEarningsText;
+
+    public void Start()
+    {
+        gameManager.characterAnimator = characterAnimator;
+        gameManager.costumeManager = costumeManager;
+    }
 
     public virtual void SetupUI(GameManager manager)
     {
@@ -40,6 +54,11 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
                  $"totalPointsPerSecondText: {(totalPointsPerSecondText != null)}\n" +
                  $"upgradeItemPrefab: {(upgradeItemPrefab != null)}\n" +
                  $"upgradesContent: {(upgradesContent != null)}");
+
+        if (costumeManager != null)
+        {
+            costumeManager.Initialize(gameManager); // Инициализируем CostumeManager с GameManager
+        }
 
         if (increaseButton != null)
         {
@@ -56,6 +75,8 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
             showUpgradesButton.onClick.AddListener(() => ShowUpgrades(true));
         }
 
+        showCostumesButton.onClick.AddListener(() => ShowCostumesPanel(true));
+
         if (leaderboardPanel != null)
             leaderboardPanel.SetActive(false);
 
@@ -63,6 +84,11 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
         {
             Debug.Log("Setting up upgradesPanel");
             upgradesPanel.SetActive(false);
+        }
+
+        if (showCostumesButton != null)
+        {
+            showCostumesButton.onClick.AddListener(() => ShowCostumesPanel(true));
         }
 
         InitializeUpgrades();
@@ -173,6 +199,12 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
         {
             Debug.LogError("ShowUpgrades: upgradesPanel is null");
         }
+    }
+
+    public virtual void ShowCostumesPanel(bool show)
+    {
+        if (costumesPanel)
+            costumesPanel.SetActive(show);
     }
 
     public virtual void UpdatePointsPerSecond()
