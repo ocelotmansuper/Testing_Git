@@ -24,7 +24,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     $rawData = file_get_contents('php://input');
     $data = json_decode($rawData, true);
 
-    // Логируем POST-запрос для отладки
     error_log("[POST Request] Raw Data: " . $rawData);
     error_log("[POST Request] Parsed Data: " . json_encode($data, JSON_PRETTY_PRINT));
 
@@ -35,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
 
     $vk_id = $data['vk_id'];
 
-    // Проверяем существование пользователя и сохраняем его текущие данные
+    // Проверяем существование пользователя
     $stmt = $connection->prepare("SELECT purchased_costumes, last_equipped_costume FROM leaderboard WHERE vk_id = ?");
     $stmt->bind_param("s", $vk_id);
     $stmt->execute();
@@ -43,11 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     $existingData = $result->fetch_assoc();
     $stmt->close();
 
-    // Используем существующие данные, если новые не переданы
-    $purchasedCostumes = isset($data['purchasedCostumes']) ? json_encode($data['purchasedCostumes'], JSON_UNESCAPED_UNICODE) : $existingData['purchased_costumes'];
-    $lastEquipped = isset($data['lastEquipped']) ? $data['lastEquipped'] : $existingData['last_equipped_costume'];
+    // Используем новые данные или сохраняем старые
+    $purchasedCostumes = isset($data['purchasedCostumes']) ? json_encode($data['purchasedCostumes'], JSON_UNESCAPED_UNICODE) : ($existingData['purchased_costumes'] ?? '[]');
+    $lastEquipped = isset($data['lastEquipped']) ? $data['lastEquipped'] : ($existingData['last_equipped_costume'] ?? '');
 
-    // Логируем данные перед записью в базу
     error_log("[Updated Data for vk_id=$vk_id]: purchasedCostumes = $purchasedCostumes, lastEquipped = $lastEquipped");
 
     $stmt = $connection->prepare("UPDATE leaderboard SET purchased_costumes = ?, last_equipped_costume = ? WHERE vk_id = ?");
@@ -58,13 +56,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_GET['action']) && $_GET['ac
     echo json_encode(['success' => true]);
 }
 
-// Загрузка данных костюмов
+// ✅ Загрузка данных костюмов - ИСПРАВЛЕНО!
 else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'player_costumes' && isset($_GET['vk_id'])) {
     $vk_id = $_GET['vk_id'];
 
     error_log("[GET Request for costumes - vk_id = {$vk_id}]");
 
-    // Получаем данные костюмов
     $stmt = $connection->prepare("SELECT purchased_costumes, last_equipped_costume FROM leaderboard WHERE vk_id = ?");
     $stmt->bind_param("s", $vk_id);
     $stmt->execute();
@@ -74,11 +71,13 @@ else if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET
 
     if ($costumeData) {
         error_log("[Costume Data retrieved successfully for vk_id={$vk_id}]: " . print_r($costumeData, true));
+        
+        // ✅ Возвращаем JSON СТРОКУ, а не распарсенный массив
         echo json_encode([
             'success' => true,
             'data' => [
-                'purchasedCostumes' => json_decode($costumeData['purchased_costumes']),
-                'lastEquipped' => $costumeData['last_equipped_costume']
+                'purchased_costumes' => $costumeData['purchased_costumes'], // ✅ Строка, как хранится в БД
+                'last_equipped_costume' => $costumeData['last_equipped_costume']
             ]
         ]);
     } else {
@@ -105,7 +104,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $checkStmt->close();
 
     if (!$exists) {
-        // Создаем нового пользователя
         $stmt = $connection->prepare("INSERT INTO leaderboard (vk_id, name, photo_url, score, upgrades, last_online) 
             VALUES (?, ?, ?, ?, ?, ?)");
         
@@ -124,7 +122,6 @@ else if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $lastOnline
         );
     } else {
-        // Обновляем существующего пользователя
         $updateFields = [];
         $params = [];
         $types = '';

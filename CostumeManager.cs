@@ -1,66 +1,57 @@
-using UnityEngine;
+п»їusing UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 using System;
 
 public class CostumeManager : MonoBehaviour
 {
-    public GameManager gameManager; // Ссылка на GameManager
+    public GameManager gameManager;
     public List<CostumeData> costumes;
 
-    public Transform costumesContent; // Контейнер UI для костюмов
-    public GameObject costumeItemPrefab; // Префаб UI элемента костюма
+    public Transform costumesContent;
+    public GameObject costumeItemPrefab;
 
-    private CostumeData equippedCostume; // Текущий экипированный костюм
+    private CostumeData equippedCostume;
 
     [SerializeField] private CharacterAnimator characterAnimator;
 
+    private bool isInitialized = false; // вњ… Р¤Р»Р°Рі РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
+
     private void Start()
     {
-        // Установка костюма по умолчанию
-        if (costumes != null && costumes.Count > 0)
-        {
-            foreach (var costume in costumes) costume.isPurchased = false; // Сбрасываем состояние покупки
-            costumes[0].isPurchased = true; // Первый костюм доступен по умолчанию
-            EquipCostume(costumes[0]); // Устанавливаем первый костюм
-        }
+        // вќЊ РЈР‘Р РђР› СЃР±СЂРѕСЃ! РўРµРїРµСЂСЊ СЌС‚Рѕ РґРµР»Р°РµС‚ Initialize()
     }
+
     public void Initialize(GameManager manager)
     {
+        if (isInitialized) return; // Р—Р°С‰РёС‚Р° РѕС‚ РґРІРѕР№РЅРѕР№ РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
+        isInitialized = true;
+
         gameManager = manager;
-        Debug.Log("CostumeManager успешно инициализирован с GameManager");
-        LoadCostumeData();
+        Debug.Log("CostumeManager РёРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅ СЃ GameManager");
+
+        // вњ… РРЅРёС†РёР°Р»РёР·РёСЂСѓРµРј РєРѕСЃС‚СЋРјС‹ РІ РґРµС„РѕР»С‚ Р—Р”Р•РЎР¬
+        if (costumes != null && costumes.Count > 0)
+        {
+            foreach (var costume in costumes) costume.isPurchased = false;
+            costumes[0].isPurchased = true;
+            equippedCostume = costumes[0];
+            costumes[0].costumeObject.SetActive(true);
+
+            foreach (var c in costumes)
+            {
+                if (c != costumes[0])
+                    c.costumeObject.SetActive(false);
+            }
+
+            characterAnimator.SetActiveCostume(costumes[0].costumeObject.transform);
+            gameManager.BonusPerClick = costumes[0].bonusPerClick;
+        }
+
         InitializeCostumesUI();
     }
 
-    private void LoadCostumeData()
-    {
-        // Запрос данных с сервера
-        StartCoroutine(gameManager.SendGetRequest("player_costumes", (response) =>
-        {
-            if (string.IsNullOrEmpty(response))
-            {
-                Debug.LogError("Failed to load costume data from server.");
-                return;
-            }
-
-            var saveData = JsonUtility.FromJson<CostumeSaveData>(response);
-
-            // Восстанавливаем состояния покупки костюмов
-            foreach (var costume in costumes)
-            {
-                costume.isPurchased = Array.Exists(saveData.purchasedCostumes, name => name == costume.name);
-            }
-
-            // Надеваем последний надетый костюм, если он есть
-            var lastEquippedCostume = costumes.Find(c => c.name == saveData.lastEquipped);
-            if (lastEquippedCostume != null)
-            {
-                EquipCostume(lastEquippedCostume);
-            }
-        }));
-    }
-
+    // вњ… Р­С‚РѕС‚ РјРµС‚РѕРґ РІС‹Р·С‹РІР°РµС‚СЃСЏ РёР· GameManager РџРћРЎР›Р• Р·Р°РіСЂСѓР·РєРё РґР°РЅРЅС‹С…
     public void ReapplyCostumeData(string purchasedCostumesJson, string lastEquippedCostumeName)
     {
         Debug.Log($"Raw JSON for purchased costumes: {purchasedCostumesJson}");
@@ -72,40 +63,46 @@ public class CostumeManager : MonoBehaviour
         }
 
         string[] purchasedCostumes;
+        //Debug.LogError($"Error deserializing purchased costumes JSON: {e.Message}");
+        // РџСЂРѕР±СѓРµРј Р°Р»СЊС‚РµСЂРЅР°С‚РёРІРЅС‹Р№ СЃРїРѕСЃРѕР± РїР°СЂСЃРёРЅРіР°
         try
         {
-            // Попытка десериализации; обработка пустого массива
-            purchasedCostumes = JsonUtility.FromJson<string[]>(purchasedCostumesJson);
-
-            if (purchasedCostumes == null)
+            var wrapper = JsonUtility.FromJson<StringArrayWrapper>($"{{\"items\":{purchasedCostumesJson}}}");
+            if (wrapper != null && wrapper.items != null)
             {
-                Debug.LogWarning("Purchased costumes array is null after deserialization.");
-                purchasedCostumes = new string[0];
+                purchasedCostumes = wrapper.items;
+            }
+            else
+            {
+                return;
             }
         }
-        catch (Exception e)
+        catch (Exception e2)
         {
-            Debug.LogError($"Error deserializing purchased costumes JSON: {e.Message}");
+            Debug.LogError($"Alternative parsing also failed: {e2.Message}");
             return;
         }
 
-        // Обработка купленных костюмов
+        // вњ… РџСЂРёРјРµРЅСЏРµРј СЃС‚Р°С‚СѓСЃ РїРѕРєСѓРїРєРё
         foreach (var costume in costumes)
         {
             costume.isPurchased = System.Array.Exists(purchasedCostumes, name => name == costume.name);
             Debug.Log($"Costume {costume.name} purchased status: {costume.isPurchased}");
         }
 
-        // Установка последнего надетого костюма
-        var lastEquippedCostume = costumes.Find(c => c.name == lastEquippedCostumeName);
-        if (lastEquippedCostume != null)
+        // вњ… РџСЂРёРјРµРЅСЏРµРј РїРѕСЃР»РµРґРЅРёР№ РЅР°РґРµС‚С‹Р№ РєРѕСЃС‚СЋРј
+        if (!string.IsNullOrEmpty(lastEquippedCostumeName))
         {
-            EquipCostume(lastEquippedCostume);
-            Debug.Log($"Equipped costume: {lastEquippedCostumeName}");
-        }
-        else
-        {
-            Debug.LogWarning($"Last equipped costume not found: {lastEquippedCostumeName}");
+            var lastEquippedCostume = costumes.Find(c => c.name == lastEquippedCostumeName);
+            if (lastEquippedCostume != null && lastEquippedCostume.isPurchased)
+            {
+                EquipCostume(lastEquippedCostume);
+                Debug.Log($"Equipped costume: {lastEquippedCostumeName}");
+            }
+            else
+            {
+                Debug.LogWarning($"Last equipped costume not found or not purchased: {lastEquippedCostumeName}");
+            }
         }
     }
 
@@ -125,14 +122,14 @@ public class CostumeManager : MonoBehaviour
                 costumeItem.Initialize(costume, this);
         }
 
-        Debug.Log("Инициализация списка костюмов завершена");
+        Debug.Log("РРЅРёС†РёР°Р»РёР·РёСЂРѕРІР°РЅР° РїР°РЅРµР»СЊ РєРѕСЃС‚СЋРјРѕРІ");
     }
 
     public void PurchaseCostume(CostumeData costume)
     {
         if (costume.isPurchased)
         {
-            Debug.LogWarning($"Костюм \"{costume.name}\" уже куплен!");
+            Debug.LogWarning($"РљРѕСЃС‚СЋРј \"{costume.name}\" СѓР¶Рµ РєСѓРїР»РµРЅ!");
             return;
         }
 
@@ -142,16 +139,14 @@ public class CostumeManager : MonoBehaviour
             gameManager.SpendScore(price);
             costume.isPurchased = true;
 
-            // Автоматически надеваем костюм после покупки
             EquipCostume(costume);
 
-            // Сохраняем изменения на сервер
             var purchasedCostumes = GetPurchasedCostumes();
             gameManager.StartCoroutine(gameManager.SaveCostumeData(purchasedCostumes, costume.name));
         }
         else
         {
-            Debug.LogWarning($"Недостаточно средств для покупки костюма \"{costume.name}\".");
+            Debug.LogWarning($"РќРµРґРѕСЃС‚Р°С‚РѕС‡РЅРѕ РѕС‡РєРѕРІ РґР»СЏ РїРѕРєСѓРїРєРё РєРѕСЃС‚СЋРјР° \"{costume.name}\".");
         }
     }
 
@@ -159,29 +154,25 @@ public class CostumeManager : MonoBehaviour
     {
         if (!costume.isPurchased)
         {
-            Debug.LogWarning($"Костюм \"{costume.name}\" не куплен!");
+            Debug.LogWarning($"РљРѕСЃС‚СЋРј \"{costume.name}\" РЅРµ РєСѓРїР»РµРЅ!");
             return;
         }
 
         equippedCostume = costume;
 
-        // Отображаем только текущий костюм
+        // Р”РµР°РєС‚РёРІРёСЂСѓРµРј РІСЃРµ РѕСЃС‚Р°Р»СЊРЅС‹Рµ РєРѕСЃС‚СЋРјС‹
         foreach (var c in costumes)
         {
             c.costumeObject.SetActive(c == equippedCostume);
         }
 
-        // Устанавливаем костюм в CharacterAnimator
         characterAnimator.SetActiveCostume(equippedCostume.costumeObject.transform);
-
-        // Обновляем бонус за клик
         gameManager.BonusPerClick = equippedCostume.bonusPerClick;
 
-        // Сохраняем изменения на сервер
         var purchasedCostumes = GetPurchasedCostumes();
         gameManager.StartCoroutine(gameManager.SaveCostumeData(purchasedCostumes, costume.name));
 
-        Debug.Log($"Костюм \"{costume.name}\" экипирован!");
+        Debug.Log($"РљРѕСЃС‚СЋРј \"{costume.name}\" РЅР°РґРµС‚!");
     }
 
     private List<string> GetPurchasedCostumes()
@@ -197,46 +188,14 @@ public class CostumeManager : MonoBehaviour
         return purchased;
     }
 
-    private void SaveCostumesToServer()
-    {
-        // Формируем данные для отправки
-        var purchasedCostumes = new List<string>();
-        foreach (var costume in costumes)
-        {
-            if (costume.isPurchased)
-            {
-                purchasedCostumes.Add(costume.name);
-            }
-        }
-
-        var jsonData = JsonUtility.ToJson(new CostumeSaveData
-        {
-            purchasedCostumes = purchasedCostumes.ToArray(),
-            lastEquipped = equippedCostume != null ? equippedCostume.name : ""
-        });
-
-        // Отправляем данные на сервер
-        StartCoroutine(gameManager.SendPostRequest("player_costumes", jsonData));
-    }
-
     public GameObject GetEquippedCostumeObject()
     {
         return equippedCostume != null ? equippedCostume.costumeObject : null;
     }
+
     public CostumeData GetEquippedCostume()
     {
         return equippedCostume;
-    }
-    private Transform[] GetPoses(GameObject costumeParent)
-    {
-        List<Transform> poses = new List<Transform>();
-
-        foreach (Transform child in costumeParent.transform)
-        {
-            poses.Add(child); // Собираем все дочерние объекты, которые считаются позами
-        }
-
-        return poses.ToArray();
     }
 
     public int GetBonusPerClick()
@@ -248,7 +207,14 @@ public class CostumeManager : MonoBehaviour
 [System.Serializable]
 public class CostumeSaveData
 {
-    public string vk_id; // ID пользователя
-    public string[] purchasedCostumes; // Список купленных костюмов
-    public string lastEquipped; // Последний надетый костюм
+    public string vk_id;
+    public string[] purchasedCostumes;
+    public string lastEquipped;
+}
+
+// вњ… Р’СЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Р№ РєР»Р°СЃСЃ РґР»СЏ РїР°СЂСЃРёРЅРіР° РјР°СЃСЃРёРІР°
+[System.Serializable]
+public class StringArrayWrapper
+{
+    public string[] items;
 }

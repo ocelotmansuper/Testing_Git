@@ -33,7 +33,7 @@ public class UpgradeItem : MonoBehaviour
         }
 
         var upgrade = autoClickManager.upgrades[index];
-        Debug.Log($"Updating UI for upgrade {index}, level: {upgrade.level}");
+        //Debug.Log($"Updating UI for upgrade {index}, level: {upgrade.level}");
 
         if (levelText != null) levelText.text = $"Уровень: {upgrade.level}";
         if (priceText != null) priceText.text = $"Цена: {upgrade.GetCurrentPrice()}";

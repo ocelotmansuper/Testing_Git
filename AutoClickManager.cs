@@ -242,7 +242,7 @@ public class AutoClickManager : MonoBehaviour
                     if (wrapper.upgrades[i] != null)
                     {
                         upgrades[i].level = wrapper.upgrades[i].level;
-                        Debug.Log($"[AutoClickManager] Updated upgrade {upgrades[i].name} to level {upgrades[i].level}");
+                        //Debug.Log($"[AutoClickManager] Updated upgrade {upgrades[i].name} to level {upgrades[i].level}");
                     }
                 }
             }

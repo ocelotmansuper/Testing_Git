@@ -240,7 +240,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
             if (item != null)
             {
                 item.UpdateUI();
-                Debug.Log($"Updated UI for upgrade: {item.name}");
+                //Debug.Log($"Updated UI for upgrade: {item.name}");
             }
         }
     }
