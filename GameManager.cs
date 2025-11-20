@@ -29,6 +29,7 @@ public class GameManager : MonoBehaviour
     public CostumeManager costumeManager;
 
     public int BonusPerClick;
+    public StarsSpawner starSpawner;
 
     private void Start()
     {
@@ -220,6 +221,10 @@ public class GameManager : MonoBehaviour
         currentScore += scoreToAdd;
 
         characterAnimator.OnClick();
+
+        if (starSpawner != null)
+            starSpawner.SpawnStars(1);
+
         currentUI?.UpdateScore(currentScore);
         SaveScore();
     }

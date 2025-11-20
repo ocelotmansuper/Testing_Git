@@ -9,6 +9,7 @@ public class UpgradeData
     public float pointsPerSecond;
     public int basePrice;
     public float priceMultiplier;
+    public Sprite icon;
 
     public int GetCurrentPrice()
     {

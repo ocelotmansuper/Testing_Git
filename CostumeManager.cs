@@ -15,12 +15,7 @@ public class CostumeManager : MonoBehaviour
 
     [SerializeField] private CharacterAnimator characterAnimator;
 
-    private bool isInitialized = false; // ✅ Флаг инициализации
-
-    private void Start()
-    {
-        // ❌ УБРАЛ сброс! Теперь это делает Initialize()
-    }
+    private bool isInitialized = false; // Флаг инициализации
 
     public void Initialize(GameManager manager)
     {
@@ -51,7 +46,7 @@ public class CostumeManager : MonoBehaviour
         InitializeCostumesUI();
     }
 
-    // ✅ Этот метод вызывается из GameManager ПОСЛЕ загрузки данных
+    // Этот метод вызывается из GameManager ПОСЛЕ загрузки данных
     public void ReapplyCostumeData(string purchasedCostumesJson, string lastEquippedCostumeName)
     {
         Debug.Log($"Raw JSON for purchased costumes: {purchasedCostumesJson}");
@@ -83,14 +78,14 @@ public class CostumeManager : MonoBehaviour
             return;
         }
 
-        // ✅ Применяем статус покупки
+        // Применяем статус покупки
         foreach (var costume in costumes)
         {
             costume.isPurchased = System.Array.Exists(purchasedCostumes, name => name == costume.name);
             Debug.Log($"Costume {costume.name} purchased status: {costume.isPurchased}");
         }
 
-        // ✅ Применяем последний надетый костюм
+        // Применяем последний надетый костюм
         if (!string.IsNullOrEmpty(lastEquippedCostumeName))
         {
             var lastEquippedCostume = costumes.Find(c => c.name == lastEquippedCostumeName);
@@ -212,7 +207,7 @@ public class CostumeSaveData
     public string lastEquipped;
 }
 
-// ✅ Вспомогательный класс для парсинга массива
+// Вспомогательный класс для парсинга массива
 [System.Serializable]
 public class StringArrayWrapper
 {

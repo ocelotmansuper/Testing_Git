@@ -17,6 +17,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
     [SerializeField] protected Transform upgradesContent;
     [SerializeField] protected GameObject upgradeItemPrefab;
     [SerializeField] protected TMP_Text totalPointsPerSecondText;
+    [SerializeField] protected TMP_Text shop_totalPointsPerSecondText;
     [SerializeField] protected Button showUpgradesButton;
     [SerializeField] protected CharacterAnimator characterAnimator;
 
@@ -28,6 +29,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
 
     protected GameManager gameManager;
     public CostumeManager costumeManager;
+    public StarsSpawner starsSpawner;
     protected AutoClickManager autoClickManager;
     protected UpgradeItem[] upgradeItems;
 
@@ -39,6 +41,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
     {
         gameManager.characterAnimator = characterAnimator;
         gameManager.costumeManager = costumeManager;
+        gameManager.starSpawner = starsSpawner;
     }
 
     public virtual void SetupUI(GameManager manager)
@@ -228,6 +231,7 @@ public abstract class BaseGameUI : MonoBehaviour, IGameUI
         string newText = $"{pointsPerSecond}/сек";
         Debug.Log($"Updating totalPointsPerSecondText from '{totalPointsPerSecondText.text}' to '{newText}'");
         totalPointsPerSecondText.text = newText;
+        shop_totalPointsPerSecondText.text = newText;
     }
 
     public void UpdateUpgradesUI()

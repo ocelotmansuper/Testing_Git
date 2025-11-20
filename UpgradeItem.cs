@@ -4,6 +4,7 @@ using UnityEngine.UI;
 
 public class UpgradeItem : MonoBehaviour
 {
+    [SerializeField] private Image iconImage;
     [SerializeField] private TMP_Text nameText;
     [SerializeField] private TMP_Text levelText;
     [SerializeField] private TMP_Text priceText;
@@ -19,7 +20,6 @@ public class UpgradeItem : MonoBehaviour
         index = upgradeIndex;
         autoClickManager = manager;
         gameUI = ui; // Сохраняем ссылку на UI
-        nameText.text = upgradeName;
         buyButton.onClick.AddListener(OnBuyClicked);
         UpdateUI();
     }
@@ -34,10 +34,17 @@ public class UpgradeItem : MonoBehaviour
 
         var upgrade = autoClickManager.upgrades[index];
         //Debug.Log($"Updating UI for upgrade {index}, level: {upgrade.level}");
-
-        if (levelText != null) levelText.text = $"Уровень: {upgrade.level}";
-        if (priceText != null) priceText.text = $"Цена: {upgrade.GetCurrentPrice()}";
-        if (pointsPerSecondText != null) pointsPerSecondText.text = $"+{upgrade.pointsPerSecond} очков/сек";
+        if (iconImage != null) iconImage.sprite = upgrade.icon;
+        if(upgrade.level != 0)
+        {
+            nameText.text = $"{upgrade.level}  " + upgrade.name;
+        }
+        else
+        {
+            nameText.text = upgrade.name;
+        }
+        if (priceText != null) priceText.text = $"{upgrade.GetCurrentPrice()}";
+        if (pointsPerSecondText != null) pointsPerSecondText.text = $"+{upgrade.pointsPerSecond}/сек";
     }
 
     private void OnBuyClicked()

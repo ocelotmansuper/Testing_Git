@@ -10,6 +10,7 @@ public class CostumeData
     public int bonusPerClick; // Бонус к очкам за клик
     public bool isPurchased;
     public GameObject costumeObject; // Родительский объект костюма
+    public Sprite costumeIcon;
 
     public int GetCurrentPrice()
     {
